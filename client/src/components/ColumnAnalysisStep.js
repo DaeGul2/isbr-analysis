@@ -1,6 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import * as d3 from 'd3';
 import '../styles/ColumnAnalysisStep.css';
+import GraphComponent from './GraphComponent';
+import { Chart as ChartJS, BarElement, CategoryScale, LinearScale, Title, Tooltip, Legend } from 'chart.js';
+
+ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
 const ColumnAnalysisStep = ({ sheetSelections, onBack, onNext }) => {
   const [activeSheetIndex, setActiveSheetIndex] = useState(0); // 현재 선택된 시트
@@ -16,7 +20,6 @@ const ColumnAnalysisStep = ({ sheetSelections, onBack, onNext }) => {
     console.log("Active Data Loaded:", data);
   }, [data]);
 
-  // 대상 이름과 인원수 생성 함수
   const getTargetNameWithCount = (target, count) => {
     const name =
       target === "fail"
@@ -40,7 +43,6 @@ const ColumnAnalysisStep = ({ sheetSelections, onBack, onNext }) => {
     return `${name} (${count}명)`;
   };
 
-  // '결과' 기준 데이터 필터링 함수
   const filterDataByTarget = (target) => {
     const cleanData = data.map((row) => {
       let resultValue = row['결과'];
@@ -69,7 +71,6 @@ const ColumnAnalysisStep = ({ sheetSelections, onBack, onNext }) => {
     return filteredData;
   };
 
-  // 기본 통계량 계산 함수
   const calculateStatistics = (filteredData, column) => {
     const values = filteredData
       .map((row) => {
@@ -94,14 +95,12 @@ const ColumnAnalysisStep = ({ sheetSelections, onBack, onNext }) => {
     };
   };
 
-  // 대상 선택 상태 업데이트
   const toggleTargetSelection = (target) => {
     setSelectedTargets((prev) =>
       prev.includes(target) ? prev.filter((t) => t !== target) : [...prev, target]
     );
   };
 
-  // 분석 결과 생성
   const generateStatisticsTable = () => {
     const stats = {};
     const targetCounts = {};
@@ -121,9 +120,57 @@ const ColumnAnalysisStep = ({ sheetSelections, onBack, onNext }) => {
 
   const { stats: statsTable, targetCounts } = generateStatisticsTable();
 
+  const options = {
+    responsive: true,
+    plugins: {
+      legend: {
+        display: true,
+        position: 'top',
+        labels: {
+          font: {
+            size: 18,
+          },
+          generateLabels: (chart) => {
+            return chart.legend.legendItems.map((item, index) => {
+              const targetKey = selectedTargets[index];
+              const targetName = getTargetNameWithCount(targetKey, targetCounts[targetKey] || 0).split(' ')[0];
+              return {
+                ...item,
+                text: targetName,
+              };
+            });
+          },
+        },
+      },
+      tooltip: {
+        enabled: true,
+      },
+      datalabels: {
+        display: true,
+        align: 'top',
+        anchor: 'end',
+        color: '#000',
+        formatter: (value) => value.toFixed(2),
+      },
+    },
+    scales: {
+      x: {
+        title: {
+          display: true,
+          text: '컬럼명',
+        },
+      },
+      y: {
+        title: {
+          display: true,
+          text: '값',
+        },
+      },
+    },
+  };
+
   return (
     <div className="full-screen-step">
-      {/* 시트 탭 */}
       <div className="tabs">
         {sheetSelections.map((sheet, index) => (
           <button
@@ -136,7 +183,6 @@ const ColumnAnalysisStep = ({ sheetSelections, onBack, onNext }) => {
         ))}
       </div>
 
-      {/* 대상 선택 */}
       <div className="target-selection mb-4">
         <h3 className="text-center mb-3">대상 선택</h3>
         <div className="d-flex justify-content-center">
@@ -231,7 +277,6 @@ const ColumnAnalysisStep = ({ sheetSelections, onBack, onNext }) => {
         </div>
       </div>
 
-      {/* 기본 통계 테이블 */}
       <div className="statistics-table">
         <h3 className="text-center mb-4">기본 통계 분석 결과</h3>
         {selectedTargets.length === 0 ? (
@@ -267,8 +312,22 @@ const ColumnAnalysisStep = ({ sheetSelections, onBack, onNext }) => {
         )}
       </div>
 
-      {/* 하단 버튼 */}
-      <div className="button-group text-center">
+      <div className="graph-container mt-4" style={{ width: '80%', margin: '0 auto' }}>
+        <h3 className="text-center mb-4">대상별 평균 비교 그래프</h3>
+        {selectedTargets.length > 0 ? (
+          <GraphComponent
+            statsTable={statsTable}
+            selectedTargets={selectedTargets}
+            selectedMetrics={['mean']}
+            title="대상별 평균 비교"
+            options={options}
+          />
+        ) : (
+          <p className="text-center">그래프를 보기 위해 대상을 선택해주세요.</p>
+        )}
+      </div>
+
+      <div className="button-group text-center" style={{ position: 'fixed', bottom: '0', width: '10%' }}>
         <button className="btn btn-secondary" onClick={onBack}>
           이전 단계로 돌아가기
         </button>
