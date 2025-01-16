@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import FileUploadStep from './components/FileUploadStep';
 import SheetSelectionStep from './components/SheetSelectionStep';
 import ColumnSelectionStep from './components/ColumnSelectionStep';
-import ColumnSummaryStep from './components/ColumnSummaryStep'; // 새로 추가된 4단계 컴포넌트
+import ColumnSummaryStep from './components/ColumnSummaryStep';
 import ColumnAnalysisStep from './components/ColumnAnalysisStep';
 import './styles/App.css';
 
@@ -13,23 +13,39 @@ function App() {
   const [sheetSelections, setSheetSelections] = useState(null); // 컬럼 선택 결과
 
   const handleDataUploaded = (data) => {
+    console.log("Uploaded Sheets:", data); // 디버깅용
     setSheets(data); // 업로드된 데이터를 원본으로 저장
     setStep(2); // 2단계로 이동
   };
 
   const handleSheetsSelected = (selected) => {
+    console.log("Selected Sheets:", selected); // 디버깅용
     setSelectedSheets(selected); // 선택된 시트 데이터 저장
     setStep(3); // 3단계로 이동
   };
 
   const handleColumnSelections = (selections) => {
-    setSheetSelections(selections); // 선택된 컬럼 정보 저장
+    console.log("Column Selections:", selections); // 디버깅용
+    const updatedSelections = selections.map((selection) => {
+      const correspondingSheet = sheets.find(
+        (sheet) => sheet.sheetName === selection.sheetName
+      );
+      return {
+        ...selection,
+        data: correspondingSheet?.data || [],
+      };
+    });
+    setSheetSelections(updatedSelections); // 선택된 컬럼 정보와 데이터를 포함
     setStep(4); // 4단계로 이동
   };
 
+  const handleNextFromSummary = () => {
+    console.log("Passing SheetSelections to Step 5:", sheetSelections); // 디버깅용
+    setStep(5); // 5단계로 이동
+  };
+
   const handleBack = () => {
-    // 이전 단계로 이동 (데이터 초기화 보류)
-    setStep((prevStep) => Math.max(1, prevStep - 1));
+    setStep((prevStep) => Math.max(1, prevStep - 1)); // 이전 단계로 이동
   };
 
   const handleNext = () => {
@@ -60,7 +76,7 @@ function App() {
       {step === 4 && (
         <ColumnSummaryStep
           sheetSelections={sheetSelections}
-          onNext={handleNext}
+          onNext={handleNextFromSummary}
           onBack={handleBack}
         />
       )}

@@ -1,0 +1,121 @@
+/* Full-screen step layout */
+.full-screen-step {
+    width: 100%;
+    height: 100%;
+    padding: 20px;
+    background-color: #f9f9f9;
+    box-sizing: border-box;
+  }
+  
+  /* Tabs */
+  .tabs {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 20px;
+  }
+  
+  .tabs .tab {
+    padding: 10px 20px;
+    margin: 0 5px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    background-color: #fff;
+    cursor: pointer;
+    font-weight: bold;
+  }
+  
+  .tabs .tab.active {
+    background-color: #007bff;
+    color: #fff;
+    border-color: #007bff;
+  }
+  
+  /* Target selection */
+  .target-selection h3 {
+    font-size: 1.5rem;
+    margin-bottom: 10px;
+  }
+  
+  .target-selection label {
+    font-size: 1rem;
+    margin-right: 15px;
+    cursor: pointer;
+  }
+  
+  .target-selection input[type="checkbox"] {
+    margin-right: 5px;
+  }
+  
+  /* Statistics table */
+  .statistics-table {
+    margin-top: 20px;
+  }
+  
+  .statistics-table h3 {
+    font-size: 1.5rem;
+    margin-bottom: 20px;
+    text-align: center;
+  }
+  
+  .statistics-table .table {
+    width: 100%;
+    margin: auto;
+    border-collapse: collapse;
+    background-color: #fff;
+  }
+  
+  .statistics-table .table th,
+  .statistics-table .table td {
+    padding: 10px;
+    text-align: center;
+    border: 1px solid #ddd;
+  }
+  
+  .statistics-table .table th {
+    background-color: #f1f1f1;
+    font-weight: bold;
+  }
+  
+  .statistics-table .table-striped tbody tr:nth-child(odd) {
+    background-color: #f9f9f9;
+  }
+  
+  .statistics-table .table-bordered {
+    border: 1px solid #ddd;
+  }
+  
+  /* Button group */
+  .button-group {
+    margin-top: 30px;
+    display: flex;
+    justify-content: center;
+  }
+  
+  .button-group .btn {
+    padding: 10px 20px;
+    margin: 0 10px;
+    font-size: 1rem;
+    border-radius: 5px;
+    cursor: pointer;
+  }
+  
+  .button-group .btn-secondary {
+    background-color: #6c757d;
+    color: #fff;
+    border: none;
+  }
+  
+  .button-group .btn-secondary:hover {
+    background-color: #5a6268;
+  }
+  
+  .button-group .btn-primary {
+    background-color: #007bff;
+    color: #fff;
+    border: none;
+  }
+  
+  .button-group .btn-primary:hover {
+    background-color: #0056b3;
+  }
+  
