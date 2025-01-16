@@ -1,107 +1,137 @@
-/* Full-screen step layout */
+/* 전체 화면 크기 및 배치 */
 .full-screen-step {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
     width: 100%;
-    height: 100%;
+    height: 100vh;
     padding: 20px;
-    background-color: #f9f9f9;
-    box-sizing: border-box;
+    background-color: #f8f9fa;
   }
   
-  /* Tabs */
+  /* 탭 스타일 */
   .tabs {
     display: flex;
     justify-content: center;
     margin-bottom: 20px;
   }
   
-  .tabs .tab {
+  .tab {
+    background-color: #ffffff;
+    border: 1px solid #ced4da;
     padding: 10px 20px;
     margin: 0 5px;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-    background-color: #fff;
-    cursor: pointer;
+    font-size: 16px;
     font-weight: bold;
+    color: #495057;
+    cursor: pointer;
+    transition: background-color 0.3s, color 0.3s;
+    border-radius: 5px;
   }
   
-  .tabs .tab.active {
+  .tab.active {
     background-color: #007bff;
-    color: #fff;
-    border-color: #007bff;
+    color: #ffffff;
   }
   
-  /* Target selection */
+  .tab:hover {
+    background-color: #0056b3;
+    color: #ffffff;
+  }
+  
+  /* 대상 선택 영역 */
+  .target-selection {
+    width: 100%;
+    max-width: 800px;
+    padding: 15px;
+    border: 1px solid #ced4da;
+    border-radius: 10px;
+    background-color: #ffffff;
+    box-shadow: 0px 4px 6px rgba(0, 0, 0, 0.1);
+  }
+  
   .target-selection h3 {
-    font-size: 1.5rem;
-    margin-bottom: 10px;
+    font-size: 18px;
+    font-weight: bold;
+    color: #333333;
   }
   
   .target-selection label {
-    font-size: 1rem;
-    margin-right: 15px;
+    font-size: 16px;
+    font-weight: normal;
+    color: #495057;
     cursor: pointer;
   }
   
-  .target-selection input[type="checkbox"] {
-    margin-right: 5px;
+  .target-selection input {
+    margin-right: 10px;
   }
   
-  /* Statistics table */
+  /* 통계 테이블 스타일 */
   .statistics-table {
-    margin-top: 20px;
+    width: 100%;
+    max-width: 1000px;
+    overflow-x: auto;
   }
   
   .statistics-table h3 {
-    font-size: 1.5rem;
+    font-size: 20px;
+    font-weight: bold;
+    color: #333333;
     margin-bottom: 20px;
-    text-align: center;
   }
   
-  .statistics-table .table {
+  .table {
     width: 100%;
-    margin: auto;
+    margin: 0 auto;
     border-collapse: collapse;
-    background-color: #fff;
   }
   
-  .statistics-table .table th,
-  .statistics-table .table td {
-    padding: 10px;
+  .table thead {
+    background-color: #343a40;
+    color: #ffffff;
+  }
+  
+  .table thead th {
+    padding: 15px;
     text-align: center;
-    border: 1px solid #ddd;
-  }
-  
-  .statistics-table .table th {
-    background-color: #f1f1f1;
+    font-size: 16px;
     font-weight: bold;
   }
   
-  .statistics-table .table-striped tbody tr:nth-child(odd) {
-    background-color: #f9f9f9;
+  .table tbody tr:nth-child(even) {
+    background-color: #f2f2f2;
   }
   
-  .statistics-table .table-bordered {
-    border: 1px solid #ddd;
+  .table tbody td {
+    padding: 15px;
+    text-align: center;
+    font-size: 14px;
+    vertical-align: middle;
+    border: 1px solid #dee2e6;
   }
   
-  /* Button group */
+  .table tbody td:first-child {
+    font-weight: bold;
+  }
+  
+  /* 버튼 스타일 */
   .button-group {
-    margin-top: 30px;
-    display: flex;
-    justify-content: center;
+    margin-top: 20px;
   }
   
   .button-group .btn {
     padding: 10px 20px;
-    margin: 0 10px;
-    font-size: 1rem;
+    font-size: 16px;
+    font-weight: bold;
     border-radius: 5px;
-    cursor: pointer;
+    transition: all 0.3s ease;
   }
   
   .button-group .btn-secondary {
     background-color: #6c757d;
-    color: #fff;
+    color: #ffffff;
     border: none;
   }
   
@@ -111,11 +141,44 @@
   
   .button-group .btn-primary {
     background-color: #007bff;
-    color: #fff;
+    color: #ffffff;
     border: none;
   }
   
   .button-group .btn-primary:hover {
     background-color: #0056b3;
+  }
+  
+  /* 반응형 디자인 */
+  @media (max-width: 768px) {
+    .tabs {
+      flex-wrap: wrap;
+    }
+  
+    .tab {
+      flex: 1 1 100%;
+      margin-bottom: 10px;
+      text-align: center;
+    }
+  
+    .target-selection {
+      width: 100%;
+      padding: 10px;
+    }
+  
+    .statistics-table {
+      width: 100%;
+    }
+  
+    .table thead th,
+    .table tbody td {
+      font-size: 12px;
+      padding: 10px;
+    }
+  
+    .button-group .btn {
+      font-size: 14px;
+      padding: 8px 16px;
+    }
   }
   

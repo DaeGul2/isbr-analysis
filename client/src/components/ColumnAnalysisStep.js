@@ -1,24 +1,51 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import * as d3 from 'd3';
 import '../styles/ColumnAnalysisStep.css';
 
 const ColumnAnalysisStep = ({ sheetSelections, onBack, onNext }) => {
   const [activeSheetIndex, setActiveSheetIndex] = useState(0); // 현재 선택된 시트
   const [selectedTargets, setSelectedTargets] = useState([]); // 분석할 대상 그룹
+  const [activeData, setActiveData] = useState([]); // 현재 활성 데이터
 
   const activeSelection = sheetSelections[activeSheetIndex];
   const isFinalStep = activeSelection.isFinalStep;
   const data = activeSelection.data || [];
 
-  console.log("Active Sheet Data:", data);
+  useEffect(() => {
+    setActiveData(data);
+    console.log("Active Data Loaded:", data);
+  }, [data]);
+
+  // 대상 이름과 인원수 생성 함수
+  const getTargetNameWithCount = (target, count) => {
+    const name =
+      target === "fail"
+        ? "탈락자"
+        : target === "pass_not_final"
+        ? "합격자 (최종 탈락)"
+        : target === "final_pass"
+        ? "최종 합격자"
+        : target === "all_pass"
+        ? "전체 합격자"
+        : target === "not_final"
+        ? "최종 탈락자"
+        : target === "all"
+        ? "전체 응시자"
+        : target === "final_fail"
+        ? "최종 탈락자"
+        : target === "final_all"
+        ? "최종 전체 응시자"
+        : "최종 합격자";
+
+    return `${name} (${count}명)`;
+  };
 
   // '결과' 기준 데이터 필터링 함수
   const filterDataByTarget = (target) => {
     const cleanData = data.map((row) => {
-      // '결과' 값을 숫자로 변환
-      let resultValue = row['결과']; 
+      let resultValue = row['결과'];
       if (typeof resultValue === "string") {
-        resultValue = resultValue.replace(/[^0-9.-]/g, ""); // 숫자가 아닌 문자 제거
+        resultValue = resultValue.replace(/[^0-9.-]/g, "");
         resultValue = parseFloat(resultValue);
       }
       return { ...row, 결과: Number.isFinite(resultValue) ? resultValue : null };
@@ -38,7 +65,7 @@ const ColumnAnalysisStep = ({ sheetSelections, onBack, onNext }) => {
       if (target === "all") filteredData = cleanData.filter((row) => row.결과 >= 0);
     }
 
-    console.log(`Target: ${target}, Filtered Data:`, filteredData);
+    console.log(`Filtered Data for Target: ${target}`, filteredData);
     return filteredData;
   };
 
@@ -48,7 +75,7 @@ const ColumnAnalysisStep = ({ sheetSelections, onBack, onNext }) => {
       .map((row) => {
         let value = row[column];
         if (typeof value === "string") {
-          value = value.replace(/,/g, ""); // 쉼표 제거
+          value = value.replace(/,/g, "");
           value = parseFloat(value);
         }
         return Number.isFinite(value) ? value : null;
@@ -77,9 +104,11 @@ const ColumnAnalysisStep = ({ sheetSelections, onBack, onNext }) => {
   // 분석 결과 생성
   const generateStatisticsTable = () => {
     const stats = {};
+    const targetCounts = {};
 
     selectedTargets.forEach((target) => {
       const filteredData = filterDataByTarget(target);
+      targetCounts[target] = filteredData.length;
 
       activeSelection.selectedColumns.forEach((column) => {
         if (!stats[column]) stats[column] = {};
@@ -87,10 +116,10 @@ const ColumnAnalysisStep = ({ sheetSelections, onBack, onNext }) => {
       });
     });
 
-    return stats;
+    return { stats, targetCounts };
   };
 
-  const statsTable = generateStatisticsTable();
+  const { stats: statsTable, targetCounts } = generateStatisticsTable();
 
   return (
     <div className="full-screen-step">
@@ -120,7 +149,7 @@ const ColumnAnalysisStep = ({ sheetSelections, onBack, onNext }) => {
                   checked={selectedTargets.includes("final_fail")}
                   onChange={() => toggleTargetSelection("final_fail")}
                 />
-                최종 전형 탈락자
+                {getTargetNameWithCount("final_fail", targetCounts["final_fail"] || 0)}
               </label>
               <label className="mx-3">
                 <input
@@ -129,7 +158,7 @@ const ColumnAnalysisStep = ({ sheetSelections, onBack, onNext }) => {
                   checked={selectedTargets.includes("final_pass")}
                   onChange={() => toggleTargetSelection("final_pass")}
                 />
-                최종 전형 합격자
+                {getTargetNameWithCount("final_pass", targetCounts["final_pass"] || 0)}
               </label>
               <label className="mx-3">
                 <input
@@ -138,7 +167,7 @@ const ColumnAnalysisStep = ({ sheetSelections, onBack, onNext }) => {
                   checked={selectedTargets.includes("final_all")}
                   onChange={() => toggleTargetSelection("final_all")}
                 />
-                최종 전형 전체 응시자
+                {getTargetNameWithCount("final_all", targetCounts["final_all"] || 0)}
               </label>
             </>
           ) : (
@@ -150,7 +179,7 @@ const ColumnAnalysisStep = ({ sheetSelections, onBack, onNext }) => {
                   checked={selectedTargets.includes("fail")}
                   onChange={() => toggleTargetSelection("fail")}
                 />
-                해당 전형 탈락자
+                {getTargetNameWithCount("fail", targetCounts["fail"] || 0)}
               </label>
               <label className="mx-3">
                 <input
@@ -159,7 +188,7 @@ const ColumnAnalysisStep = ({ sheetSelections, onBack, onNext }) => {
                   checked={selectedTargets.includes("pass_not_final")}
                   onChange={() => toggleTargetSelection("pass_not_final")}
                 />
-                해당 전형 합격자 (최종 탈락)
+                {getTargetNameWithCount("pass_not_final", targetCounts["pass_not_final"] || 0)}
               </label>
               <label className="mx-3">
                 <input
@@ -168,7 +197,7 @@ const ColumnAnalysisStep = ({ sheetSelections, onBack, onNext }) => {
                   checked={selectedTargets.includes("final_pass")}
                   onChange={() => toggleTargetSelection("final_pass")}
                 />
-                최종 합격자
+                {getTargetNameWithCount("final_pass", targetCounts["final_pass"] || 0)}
               </label>
               <label className="mx-3">
                 <input
@@ -177,7 +206,7 @@ const ColumnAnalysisStep = ({ sheetSelections, onBack, onNext }) => {
                   checked={selectedTargets.includes("all_pass")}
                   onChange={() => toggleTargetSelection("all_pass")}
                 />
-                해당 전형 전체 합격자
+                {getTargetNameWithCount("all_pass", targetCounts["all_pass"] || 0)}
               </label>
               <label className="mx-3">
                 <input
@@ -186,7 +215,7 @@ const ColumnAnalysisStep = ({ sheetSelections, onBack, onNext }) => {
                   checked={selectedTargets.includes("not_final")}
                   onChange={() => toggleTargetSelection("not_final")}
                 />
-                최종 전형 탈락자
+                {getTargetNameWithCount("not_final", targetCounts["not_final"] || 0)}
               </label>
               <label className="mx-3">
                 <input
@@ -195,7 +224,7 @@ const ColumnAnalysisStep = ({ sheetSelections, onBack, onNext }) => {
                   checked={selectedTargets.includes("all")}
                   onChange={() => toggleTargetSelection("all")}
                 />
-                해당 전형 전체 응시자
+                {getTargetNameWithCount("all", targetCounts["all"] || 0)}
               </label>
             </>
           )}
@@ -208,12 +237,12 @@ const ColumnAnalysisStep = ({ sheetSelections, onBack, onNext }) => {
         {selectedTargets.length === 0 ? (
           <p className="text-center">분석할 대상을 선택해주세요.</p>
         ) : (
-          <table className="table table-striped table-bordered">
-            <thead>
+          <table className="table table-striped table-bordered text-center">
+            <thead className="thead-dark">
               <tr>
                 <th>컬럼명</th>
                 {selectedTargets.map((target) => (
-                  <th key={target}>{target}</th>
+                  <th key={target}>{getTargetNameWithCount(target, targetCounts[target] || 0)}</th>
                 ))}
               </tr>
             </thead>
