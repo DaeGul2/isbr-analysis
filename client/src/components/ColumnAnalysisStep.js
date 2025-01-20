@@ -8,39 +8,55 @@ ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend)
 
 const ColumnAnalysisStep = ({ sheetSelections, onBack, onNext }) => {
   const [activeSheetIndex, setActiveSheetIndex] = useState(0); // 현재 선택된 시트
-  const [selectedTargets, setSelectedTargets] = useState([]); // 분석할 대상 그룹
-  const [activeData, setActiveData] = useState([]); // 현재 활성 데이터
+  const [analysisState, setAnalysisState] = useState({}); // 시트별 단계별 상태
+  const [currentStep, setCurrentStep] = useState(0); // 현재 분석 단계
+
+  const steps = ['기본 통계 분석 결과', '대상별 평균 비교 그래프', '점수 분포표'];
 
   const activeSelection = sheetSelections[activeSheetIndex];
   const isFinalStep = activeSelection.isFinalStep;
   const data = activeSelection.data || [];
 
-  useEffect(() => {
-    setActiveData(data);
-    console.log("Active Data Loaded:", data);
-  }, [data]);
+  const getCurrentState = () => {
+    const sheetState = analysisState[activeSheetIndex] || {};
+    return sheetState[currentStep] || { selectedTargets: [] };
+  };
 
-  const getTargetNameWithCount = (target, count) => {
-    const name =
-      target === "fail"
-        ? "탈락자"
-        : target === "pass_not_final"
-        ? "합격자 (최종 탈락)"
-        : target === "final_pass"
-        ? "최종 합격자"
-        : target === "all_pass"
-        ? "전체 합격자"
-        : target === "not_final"
-        ? "최종 탈락자"
-        : target === "all"
-        ? "전체 응시자"
-        : target === "final_fail"
-        ? "최종 탈락자"
-        : target === "final_all"
-        ? "최종 전체 응시자"
-        : "최종 합격자";
+  const setCurrentState = (newState) => {
+    setAnalysisState((prev) => {
+      const sheetState = prev[activeSheetIndex] || {};
+      return {
+        ...prev,
+        [activeSheetIndex]: {
+          ...sheetState,
+          [currentStep]: newState,
+        },
+      };
+    });
+  };
 
-    return `${name} (${count}명)`;
+  const toggleTargetSelection = (target) => {
+    const currentState = getCurrentState();
+    const updatedTargets = currentState.selectedTargets.includes(target)
+      ? currentState.selectedTargets.filter((t) => t !== target)
+      : [...currentState.selectedTargets, target];
+    setCurrentState({ ...currentState, selectedTargets: updatedTargets });
+  };
+
+  const getTargetNameWithCount = (target) => {
+    const nameMap = {
+      fail: '탈락자',
+      pass_not_final: '합격자 (최종 탈락)',
+      final_pass: '최종 합격자',
+      all_pass: '전체 합격자',
+      not_final: '최종 탈락자',
+      all: '전체 응시자',
+      final_fail: '최종 탈락자',
+      final_all: '최종 전체 응시자',
+    };
+
+    const filteredData = filterDataByTarget(target);
+    return `${nameMap[target] || '대상'} (${filteredData.length}명)`;
   };
 
   const filterDataByTarget = (target) => {
@@ -67,7 +83,6 @@ const ColumnAnalysisStep = ({ sheetSelections, onBack, onNext }) => {
       if (target === "all") filteredData = cleanData.filter((row) => row.결과 >= 0);
     }
 
-    console.log(`Filtered Data for Target: ${target}`, filteredData);
     return filteredData;
   };
 
@@ -83,8 +98,6 @@ const ColumnAnalysisStep = ({ sheetSelections, onBack, onNext }) => {
       })
       .filter((value) => value !== null);
 
-    console.log(`Column: ${column}, Processed Values:`, values);
-
     return {
       mean: d3.mean(values) || 0,
       median: d3.median(values) || 0,
@@ -95,87 +108,109 @@ const ColumnAnalysisStep = ({ sheetSelections, onBack, onNext }) => {
     };
   };
 
-  const toggleTargetSelection = (target) => {
-    setSelectedTargets((prev) =>
-      prev.includes(target) ? prev.filter((t) => t !== target) : [...prev, target]
-    );
-  };
-
   const generateStatisticsTable = () => {
     const stats = {};
-    const targetCounts = {};
+    const currentState = getCurrentState();
+    const selectedTargets = currentState.selectedTargets;
 
     selectedTargets.forEach((target) => {
       const filteredData = filterDataByTarget(target);
-      targetCounts[target] = filteredData.length;
-
       activeSelection.selectedColumns.forEach((column) => {
         if (!stats[column]) stats[column] = {};
         stats[column][target] = calculateStatistics(filteredData, column);
       });
     });
 
-    return { stats, targetCounts };
+    return stats;
   };
 
-  const { stats: statsTable, targetCounts } = generateStatisticsTable();
+  const statsTable = generateStatisticsTable();
 
-  const options = {
-    responsive: true,
-    plugins: {
-      legend: {
-        display: true,
-        position: 'top',
-        labels: {
-          font: {
-            size: 18,
-          },
-          generateLabels: (chart) => {
-            return chart.legend.legendItems.map((item, index) => {
-              const targetKey = selectedTargets[index];
-              const targetName = getTargetNameWithCount(targetKey, targetCounts[targetKey] || 0).split(' ')[0];
-              return {
-                ...item,
-                text: targetName,
-              };
-            });
-          },
-        },
-      },
-      tooltip: {
-        enabled: true,
-      },
-      datalabels: {
-        display: true,
-        align: 'top',
-        anchor: 'end',
-        color: '#000',
-        formatter: (value) => value.toFixed(2),
-      },
-    },
-    scales: {
-      x: {
-        title: {
-          display: true,
-          text: '컬럼명',
-        },
-      },
-      y: {
-        title: {
-          display: true,
-          text: '값',
-        },
-      },
-    },
+  const renderScoreDistribution = () => {
+    const currentState = getCurrentState();
+    const selectedTargets = currentState.selectedTargets;
+
+    const scoreData = selectedTargets.map((target) => {
+      const filteredData = filterDataByTarget(target);
+      return {
+        target,
+        scores: filteredData.map((row) => row['점수'] || 0).filter((score) => Number.isFinite(score)),
+      };
+    });
+
+    return (
+      <div style={{ marginTop: '20px' }}>
+        <h3 style={{ textAlign: 'center' }}>점수 분포표</h3>
+        {scoreData.map(({ target, scores }) => (
+          <div key={target} style={{ marginBottom: '20px' }}>
+            <h4>{getTargetNameWithCount(target)}</h4>
+            <div style={{ display: 'flex', justifyContent: 'center' }}>
+              <svg width="500" height="300">
+                {d3.bin()
+                  .thresholds(10)(scores)
+                  .map((bin, i) => (
+                    <rect
+                      key={i}
+                      x={(i * 50)}
+                      y={300 - bin.length * 10}
+                      width="50"
+                      height={bin.length * 10}
+                      fill="steelblue"
+                    />
+                  ))}
+              </svg>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  const renderStatisticsGraphs = () => {
+    return (
+      <div style={{ marginTop: '20px' }}>
+        <div style={{ marginBottom: '20px' }}>
+          <h3 style={{ textAlign: 'center' }}>대상별 평균 비교 그래프</h3>
+          {getCurrentState().selectedTargets.length > 0 && (
+            <GraphComponent
+              statsTable={statsTable}
+              selectedTargets={getCurrentState().selectedTargets}
+              selectedMetrics={['mean']}
+              title="대상별 평균 비교"
+            />
+          )}
+        </div>
+
+        <div style={{ marginBottom: '20px' }}>
+          <h3 style={{ textAlign: 'center' }}>대상별 최대값, 최소값 그래프</h3>
+          {getCurrentState().selectedTargets.length > 0 && (
+            <GraphComponent
+              statsTable={statsTable}
+              selectedTargets={getCurrentState().selectedTargets}
+              selectedMetrics={['max', 'min']}
+              title="대상별 최대값과 최소값"
+            />
+          )}
+        </div>
+      </div>
+    );
   };
 
   return (
-    <div className="full-screen-step">
-      <div className="tabs">
+    <div style={{ width: '100%', padding: '20px', boxSizing: 'border-box', backgroundColor: '#f9f9f9' }}>
+      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '20px' }}>
         {sheetSelections.map((sheet, index) => (
           <button
             key={index}
-            className={`tab ${index === activeSheetIndex ? 'active' : ''}`}
+            style={{
+              padding: '10px 20px',
+              margin: '5px',
+              border: '1px solid #ddd',
+              borderRadius: '4px',
+              backgroundColor: index === activeSheetIndex ? '#007bff' : '#f1f1f1',
+              color: index === activeSheetIndex ? 'white' : 'black',
+              cursor: 'pointer',
+            }}
             onClick={() => setActiveSheetIndex(index)}
           >
             {sheet.sheetName}
@@ -183,111 +218,46 @@ const ColumnAnalysisStep = ({ sheetSelections, onBack, onNext }) => {
         ))}
       </div>
 
-      <div className="target-selection mb-4">
-        <h3 className="text-center mb-3">대상 선택</h3>
-        <div className="d-flex justify-content-center">
-          {isFinalStep ? (
-            <>
-              <label className="mx-3">
-                <input
-                  type="checkbox"
-                  value="final_fail"
-                  checked={selectedTargets.includes("final_fail")}
-                  onChange={() => toggleTargetSelection("final_fail")}
-                />
-                {getTargetNameWithCount("final_fail", targetCounts["final_fail"] || 0)}
-              </label>
-              <label className="mx-3">
-                <input
-                  type="checkbox"
-                  value="final_pass"
-                  checked={selectedTargets.includes("final_pass")}
-                  onChange={() => toggleTargetSelection("final_pass")}
-                />
-                {getTargetNameWithCount("final_pass", targetCounts["final_pass"] || 0)}
-              </label>
-              <label className="mx-3">
-                <input
-                  type="checkbox"
-                  value="final_all"
-                  checked={selectedTargets.includes("final_all")}
-                  onChange={() => toggleTargetSelection("final_all")}
-                />
-                {getTargetNameWithCount("final_all", targetCounts["final_all"] || 0)}
-              </label>
-            </>
-          ) : (
-            <>
-              <label className="mx-3">
-                <input
-                  type="checkbox"
-                  value="fail"
-                  checked={selectedTargets.includes("fail")}
-                  onChange={() => toggleTargetSelection("fail")}
-                />
-                {getTargetNameWithCount("fail", targetCounts["fail"] || 0)}
-              </label>
-              <label className="mx-3">
-                <input
-                  type="checkbox"
-                  value="pass_not_final"
-                  checked={selectedTargets.includes("pass_not_final")}
-                  onChange={() => toggleTargetSelection("pass_not_final")}
-                />
-                {getTargetNameWithCount("pass_not_final", targetCounts["pass_not_final"] || 0)}
-              </label>
-              <label className="mx-3">
-                <input
-                  type="checkbox"
-                  value="final_pass"
-                  checked={selectedTargets.includes("final_pass")}
-                  onChange={() => toggleTargetSelection("final_pass")}
-                />
-                {getTargetNameWithCount("final_pass", targetCounts["final_pass"] || 0)}
-              </label>
-              <label className="mx-3">
-                <input
-                  type="checkbox"
-                  value="all_pass"
-                  checked={selectedTargets.includes("all_pass")}
-                  onChange={() => toggleTargetSelection("all_pass")}
-                />
-                {getTargetNameWithCount("all_pass", targetCounts["all_pass"] || 0)}
-              </label>
-              <label className="mx-3">
-                <input
-                  type="checkbox"
-                  value="not_final"
-                  checked={selectedTargets.includes("not_final")}
-                  onChange={() => toggleTargetSelection("not_final")}
-                />
-                {getTargetNameWithCount("not_final", targetCounts["not_final"] || 0)}
-              </label>
-              <label className="mx-3">
-                <input
-                  type="checkbox"
-                  value="all"
-                  checked={selectedTargets.includes("all")}
-                  onChange={() => toggleTargetSelection("all")}
-                />
-                {getTargetNameWithCount("all", targetCounts["all"] || 0)}
-              </label>
-            </>
-          )}
+      <div style={{ marginBottom: '20px', textAlign: 'center' }}>
+        <h3>대상 선택</h3>
+        <div style={{ display: 'inline-flex', flexWrap: 'wrap', justifyContent: 'center' }}>
+          {isFinalStep
+            ? ["final_fail", "final_pass", "final_all"].map((target) => (
+                <label key={target} style={{ margin: '0 15px', fontSize: '1rem', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    value={target}
+                    checked={getCurrentState().selectedTargets.includes(target)}
+                    onChange={() => toggleTargetSelection(target)}
+                    style={{ marginRight: '5px' }}
+                  />
+                  {getTargetNameWithCount(target)}
+                </label>
+              ))
+            : ["fail", "pass_not_final", "final_pass", "all_pass", "not_final", "all"].map((target) => (
+                <label key={target} style={{ margin: '0 15px', fontSize: '1rem', cursor: 'pointer' }}>
+                  <input
+                    type="checkbox"
+                    value={target}
+                    checked={getCurrentState().selectedTargets.includes(target)}
+                    onChange={() => toggleTargetSelection(target)}
+                    style={{ marginRight: '5px' }}
+                  />
+                  {getTargetNameWithCount(target)}
+                </label>
+              ))}
         </div>
       </div>
 
-      <div className="statistics-table">
-        <h3 className="text-center mb-4">기본 통계 분석 결과</h3>
-        {selectedTargets.length === 0 ? (
-          <p className="text-center">분석할 대상을 선택해주세요.</p>
-        ) : (
-          <table className="table table-striped table-bordered text-center">
+      {currentStep === 0 && (
+        <div style={{ marginTop: '20px' }}>
+          <h3 style={{ textAlign: 'center' }}>기초 통계 결과</h3>
+          <table className="table table-striped table-bordered text-center" style={{ marginTop: '10px' }}>
             <thead className="thead-dark">
               <tr>
                 <th>컬럼명</th>
-                {selectedTargets.map((target) => (
-                  <th key={target}>{getTargetNameWithCount(target, targetCounts[target] || 0)}</th>
+                {getCurrentState().selectedTargets.map((target) => (
+                  <th key={target}>{getTargetNameWithCount(target)}</th>
                 ))}
               </tr>
             </thead>
@@ -295,12 +265,11 @@ const ColumnAnalysisStep = ({ sheetSelections, onBack, onNext }) => {
               {Object.keys(statsTable).map((column) => (
                 <tr key={column}>
                   <td>{column}</td>
-                  {selectedTargets.map((target) => (
+                  {getCurrentState().selectedTargets.map((target) => (
                     <td key={target}>
                       평균: {statsTable[column][target]?.mean.toFixed(2)} <br />
                       중앙값: {statsTable[column][target]?.median.toFixed(2)} <br />
                       표준편차: {statsTable[column][target]?.stdDev.toFixed(2)} <br />
-                      분산: {statsTable[column][target]?.variance.toFixed(2)} <br />
                       최소값: {statsTable[column][target]?.min.toFixed(2)} <br />
                       최대값: {statsTable[column][target]?.max.toFixed(2)}
                     </td>
@@ -309,34 +278,37 @@ const ColumnAnalysisStep = ({ sheetSelections, onBack, onNext }) => {
               ))}
             </tbody>
           </table>
-        )}
-      </div>
+        </div>
+      )}
 
-      <div className="graph-container mt-4" style={{ width: '80%', margin: '0 auto' }}>
-        <h3 className="text-center mb-4">대상별 평균 비교 그래프</h3>
-        {selectedTargets.length > 0 ? (
-          <GraphComponent
-            statsTable={statsTable}
-            selectedTargets={selectedTargets}
-            selectedMetrics={['mean']}
-            title="대상별 평균 비교"
-            options={options}
-          />
-        ) : (
-          <p className="text-center">그래프를 보기 위해 대상을 선택해주세요.</p>
-        )}
-      </div>
+      {currentStep === 1 && renderStatisticsGraphs()}
 
-      <div className="button-group text-center" style={{ position: 'fixed', bottom: '0', width: '10%' }}>
-        <button className="btn btn-secondary" onClick={onBack}>
-          이전 단계로 돌아가기
+      {currentStep === 2 && renderScoreDistribution()}
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', position: 'fixed', bottom: '10px', width: '90%', margin: '0 auto' }}>
+        <button
+          onClick={() => setCurrentStep((prev) => Math.max(prev - 1, 0))}
+          style={{
+            padding: '10px 20px',
+            backgroundColor: '#6c757d',
+            color: 'white',
+            borderRadius: '5px',
+            cursor: 'pointer',
+          }}
+        >
+          이전 분석 단계
         </button>
         <button
-          className="btn btn-primary"
-          onClick={onNext}
-          disabled={selectedTargets.length === 0}
+          onClick={() => setCurrentStep((prev) => Math.min(prev + 1, steps.length - 1))}
+          style={{
+            padding: '10px 20px',
+            backgroundColor: '#007bff',
+            color: 'white',
+            borderRadius: '5px',
+            cursor: 'pointer',
+          }}
         >
-          다음 단계로 이동
+          다음 분석 단계
         </button>
       </div>
     </div>
